@@ -9,9 +9,8 @@ if (!isset($_SESSION['pending_user_id'], $_SESSION['pending_code'], $_SESSION['p
     exit;
 }
 
-$maxLifetime = 10 * 60;
+$maxLifetime = 10 * 60; // 10 минут
 if (time() - $_SESSION['pending_time'] > $maxLifetime) {
-
     unset($_SESSION['pending_user_id'], $_SESSION['pending_code'], $_SESSION['pending_time'], $_SESSION['pending_login']);
     echo "CODE_EXPIRED";
     exit;
@@ -31,7 +30,7 @@ $_SESSION['user'] = $id;
 $Ip = $_SERVER["REMOTE_ADDR"];
 $DateStart = date("Y-m-d H:i:s");
 
-// 1) удаляем все старые сессии этого пользователя (Шаг 6)
+// 1) удаляем все старые сессии этого пользователя
 $stmtDel = $mysqli->prepare("DELETE FROM `session` WHERE `IdUser` = ?");
 $stmtDel->bind_param("i", $id);
 $stmtDel->execute();
@@ -46,8 +45,7 @@ $stmtSes->execute();
 $_SESSION["IdSession"] = $stmtSes->insert_id;
 $stmtSes->close();
 
-
-// лог в logs
+// 3) лог в logs
 $SqlLog = "INSERT INTO `logs`(`Ip`, `IdUser`, `Date`, `TimeOnline`, `Event`)
            VALUES (?, ?, ?, '00:00:00', ?)";
 $stmtLog = $mysqli->prepare($SqlLog);
