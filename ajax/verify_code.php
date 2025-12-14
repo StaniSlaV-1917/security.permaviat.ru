@@ -31,7 +31,13 @@ $_SESSION['user'] = $id;
 $Ip = $_SERVER["REMOTE_ADDR"];
 $DateStart = date("Y-m-d H:i:s");
 
-// запись в таблицу session
+// 1) удаляем все старые сессии этого пользователя (Шаг 6)
+$stmtDel = $mysqli->prepare("DELETE FROM `session` WHERE `IdUser` = ?");
+$stmtDel->bind_param("i", $id);
+$stmtDel->execute();
+$stmtDel->close();
+
+// 2) создаём новую запись в session
 $Sql ="INSERT INTO `session`(`IdUser`, `Ip`, `DateStart`, `DateNow`) 
        VALUES (?, ?, ?, ?)";
 $stmtSes = $mysqli->prepare($Sql);
@@ -39,6 +45,7 @@ $stmtSes->bind_param("isss", $id, $Ip, $DateStart, $DateStart);
 $stmtSes->execute();
 $_SESSION["IdSession"] = $stmtSes->insert_id;
 $stmtSes->close();
+
 
 // лог в logs
 $SqlLog = "INSERT INTO `logs`(`Ip`, `IdUser`, `Date`, `TimeOnline`, `Event`)
