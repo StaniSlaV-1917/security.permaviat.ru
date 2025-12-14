@@ -2,38 +2,34 @@
 session_start();
 include("../settings/connect_datebase.php");
 
-$login = $_POST['login'];
-$password = $_POST['password'];
+$login = $_POST['login'] ?? '';
+$password = $_POST['password'] ?? '';
 
-function validatePasswordServer($pwd, &$errorCode) {
-    if (strlen($pwd) < 9) { $errorCode = "len"; return false; }
-    if (!preg_match('/[A-Za-z]/', $pwd)) { $errorCode = "letter"; return false; }
-    if (!preg_match('/[A-Z]/', $pwd)) { $errorCode = "upper"; return false; }
-    if (!preg_match('/[0-9]/', $pwd)) { $errorCode = "digit"; return false; }
-    if (!preg_match('/[^A-Za-z0-9]/', $pwd)) { $errorCode = "symbol"; return false; }
-    return true;
-}
+$stmt = $mysqli->prepare("SELECT `id` FROM `users` WHERE `login` = ?");
+$stmt->bind_param("s", $login);
+$stmt->execute();
+$stmt->store_result();
 
-$errorCode = "";
-if (!validatePasswordServer($password, $errorCode)) {
-
-    echo "PWD_ERROR_" . $errorCode;
+if ($stmt->num_rows > 0) {
+    echo -1; 
     exit;
 }
+$stmt->close();
 
-$query_user = $mysqli->query("SELECT * FROM `users` WHERE `login`='".$login."'");
-$id = -1;
 
-if($user_read = $query_user->fetch_row()) {
-    echo $id; 
-} else {
-    $mysqli->query("INSERT INTO `users`(`login`, `password`, `roll`) VALUES ('".$login."', '".$password."', 0)");
+$hash = password_hash($password, PASSWORD_DEFAULT); 
 
-    $query_user = $mysqli->query("SELECT * FROM `users` WHERE `login`='".$login."' AND `password`= '".$password."';");
-    $user_new = $query_user->fetch_row();
-    $id = $user_new[0];
-            
-    if($id != -1) $_SESSION['user'] = $id;
+$stmtIns = $mysqli->prepare("INSERT INTO `users`(`login`, `password`, `roll`) VALUES (?, ?, 0)");
+$stmtIns->bind_param("ss", $login, $hash);
+$stmtIns->execute();
+
+$id = $stmtIns->insert_id;
+$stmtIns->close();
+
+if ($id > 0) {
+    $_SESSION['user'] = $id;
     echo $id;
+} else {
+    echo 0; 
 }
 ?>

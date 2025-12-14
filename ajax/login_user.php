@@ -1,36 +1,46 @@
 <?php
-	session_start();
-	include("../settings/connect_datebase.php");
-	
-	$login = $_POST['login'];
-	$password = $_POST['password'];
-	
-	// ищем пользователя
-	$query_user = $mysqli->query("SELECT * FROM `users` WHERE `login`='".$login."' AND `password`= '".$password."';");
-	
-	$id = -1;
-	while($user_read = $query_user->fetch_row()) {
-		$id = $user_read[0];
-	}
-	
-	if($id != -1) {
-		$_SESSION['user'] = $id;
+session_start();
+include("../settings/connect_datebase.php");
 
-		$Ip = $_SERVER["REMOTE_ADDR"];
-		$DateStart = date(format: "Y-m-d H:i:s");
+$login = $_POST['login'] ?? '';
+$password = $_POST['password'] ?? '';
 
-		$Sql ="INSERT INTO `session`(`IdUser`, `Ip`, `DateStart`, `DateNow`) VALUES ({$id}, '{$Ip}', '{$DateStart}', '{$DateStart}')";
-		$mysqli->query(query: $Sql);
+$stmt = $mysqli->prepare("SELECT `id`, `password` FROM `users` WHERE `login` = ?");
+$stmt->bind_param("s", $login);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
+$stmt->close();
 
-		$Sql = "SELECT `Id` FROM `session` WHERE `DateStart` = '{$DateStart}';";
-		$Query = $mysqli->query(query: $Sql);
-		$Read = $Query->fetch_assoc();
-		$_SESSION["IdSession"] = $Read["Id"];
+$id = -1;
 
-		$Sql = "INSERT INTO" .
-		"`logs`(`Ip`, `IdUser`, `Date`, `TimeOnline`, `Event`)" .
-		"VALUES ('{$Ip}','{$id}','{$DateStart}','00:00:00','Пользователь {$login} авторизовался.')";
-		$mysqli->query(query: $Sql);
-	}
-	echo md5(	md5($id));
+if ($user && password_verify($password, $user['password'])) {
+    $id = (int)$user['id'];
+}
+
+if($id != -1) {
+    $_SESSION['user'] = $id;
+
+    $Ip = $_SERVER["REMOTE_ADDR"];
+    $DateStart = date("Y-m-d H:i:s");
+
+   
+    $Sql ="INSERT INTO `session`(`IdUser`, `Ip`, `DateStart`, `DateNow`) 
+           VALUES (?, ?, ?, ?)";
+    $stmtSes = $mysqli->prepare($Sql);
+    $stmtSes->bind_param("isss", $id, $Ip, $DateStart, $DateStart);
+    $stmtSes->execute();
+    $_SESSION["IdSession"] = $stmtSes->insert_id;
+    $stmtSes->close();
+
+    $SqlLog = "INSERT INTO `logs`(`Ip`, `IdUser`, `Date`, `TimeOnline`, `Event`)
+               VALUES (?, ?, ?, '00:00:00', ?)";
+    $stmtLog = $mysqli->prepare($SqlLog);
+    $event = "Пользователь {$login} авторизовался.";
+    $stmtLog->bind_param("siss", $Ip, $id, $DateStart, $event);
+    $stmtLog->execute();
+    $stmtLog->close();
+}
+
+echo md5(md5($id));
 ?>
