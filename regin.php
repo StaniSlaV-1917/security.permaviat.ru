@@ -58,8 +58,26 @@
 		</div>
 		
 		<script>
-			var loading = document.getElementsByClassName("loading")[0];
-			var button = document.getElementsByClassName("button")[0];
+    var loading = document.getElementsByClassName("loading")[0];
+    var button = document.getElementsByClassName("button")[0];
+
+    function validatePassword(password) {
+        if (password.length < 9) return "Пароль должен быть длиннее 8 символов.";
+
+        // хотя бы одна латинская буква
+        if (!/[A-Za-z]/.test(password)) return "Пароль должен содержать латинские буквы.";
+
+        // хотя бы одна заглавная буква
+        if (!/[A-Z]/.test(password)) return "Пароль должен содержать хотя бы одну заглавную букву.";
+
+        // хотя бы одна цифра
+        if (!/[0-9]/.test(password)) return "Пароль должен содержать хотя бы одну цифру.";
+
+        // хотя бы один спецсимвол
+        if (!/[^A-Za-z0-9]/.test(password)) return "Пароль должен содержать хотя бы один спецсимвол.";
+
+        return "";
+    }
 			
 			function RegIn() {
 				var _login = document.getElementsByName("_login")[0].value;
