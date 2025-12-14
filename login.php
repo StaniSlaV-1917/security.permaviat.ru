@@ -46,6 +46,12 @@
 					<br><a href="recovery.php">Забыли пароль?</a>
 					<input type="button" class="button" value="Войти" onclick="LogIn()"/>
 					<img src = "img/loading.gif" class="loading"/>
+					<div id="codeBlock" style="display:none; margin-top:15px;">
+    					<div class="sub-name">Код из почты:</div>
+    					<input name="_code" type="text" placeholder="6-значный код"/>
+   					    <input type="button" class="button" value="Подтвердить код" onclick="VerifyCode()" style="margin-top: 10px;"/>
+					</div>
+
 				</div>
 				
 				<div class="footer">
@@ -83,18 +89,35 @@
 					contentType : false, 
 					// функция успешного ответа сервера
 					success: function (_data) {
-						console.log("Авторизация прошла успешно, id: " +_data);
-						if(_data == "") {
-							loading.style.display = "none";
-							button.className = "button";
-							alert("Логин или пароль не верный.");
-						} else {
-							localStorage.setItem("token", _data);
-							location.reload();
-							loading.style.display = "none";
-							button.className = "button";
-						}
-					},
+    console.log("Авторизация, ответ: " + _data);
+
+    if (_data === "LOGIN_ERROR") {
+        loading.style.display = "none";
+        button.className = "button";
+        alert("Логин или пароль не верный.");
+        return;
+    }
+
+    if (_data === "NEED_CODE") {
+        // показываем блок ввода кода
+        document.getElementById("codeBlock").style.display = "block";
+        // можно заблокировать поля логин/пароль
+        return;
+    }
+
+    // старое поведение (если вдруг что-то другое)
+    if(_data == "") {
+        loading.style.display = "none";
+        button.className = "button";
+        alert("Логин или пароль не верный.");
+    } else {
+        localStorage.setItem("token", _data);
+        location.reload();
+        loading.style.display = "none";
+        button.className = "button";
+    }
+},
+
 					// функция ошибки
 					error: function( ){
 						console.log('Системная ошибка!');
@@ -116,7 +139,52 @@
 					}
 				}
 			}
-			
+			function VerifyCode() {
+    var _code = document.getElementsByName("_code")[0].value;
+    if (_code === "") {
+        alert("Введите код из письма.");
+        return;
+    }
+
+    var data = new FormData();
+    data.append("code", _code);
+
+    $.ajax({
+        url         : 'ajax/verify_code.php',
+        type        : 'POST',
+        data        : data,
+        cache       : false,
+        dataType    : 'html',
+        processData : false,
+        contentType : false,
+        success: function (_data) {
+            console.log("Проверка кода: " + _data);
+
+            if (_data === "CODE_ERROR") {
+                alert("Код неверный.");
+                return;
+            }
+            if (_data === "CODE_EXPIRED") {
+                alert("Код просрочен. Войдите заново.");
+                location.reload();
+                return;
+            }
+            if (_data === "NO_PENDING") {
+                alert("Нет ожидающей авторизации. Войдите заново.");
+                location.reload();
+                return;
+            }
+            if (_data === "OK") {
+                location.reload();
+            } else {
+                alert("Неизвестный ответ сервера: " + _data);
+            }
+        },
+        error: function(){
+            console.log('Системная ошибка при проверке кода!');
+        }
+    });
+}
 		</script>
 	</body>
 </html>

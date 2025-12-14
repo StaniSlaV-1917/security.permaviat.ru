@@ -5,6 +5,7 @@ include("../settings/connect_datebase.php");
 $login = $_POST['login'] ?? '';
 $password = $_POST['password'] ?? '';
 
+
 $stmt = $mysqli->prepare("SELECT `id`, `password` FROM `users` WHERE `login` = ?");
 $stmt->bind_param("s", $login);
 $stmt->execute();
@@ -12,35 +13,28 @@ $result = $stmt->get_result();
 $user = $result->fetch_assoc();
 $stmt->close();
 
-$id = -1;
+if (!$user || !password_verify($password, $user['password'])) {
 
-if ($user && password_verify($password, $user['password'])) {
-    $id = (int)$user['id'];
+    echo "LOGIN_ERROR";
+    exit;
 }
 
-if($id != -1) {
-    $_SESSION['user'] = $id;
 
-    $Ip = $_SERVER["REMOTE_ADDR"];
-    $DateStart = date("Y-m-d H:i:s");
+$code = random_int(100000, 999999);
+$_SESSION['pending_user_id'] = (int)$user['id'];
+$_SESSION['pending_login'] = $login;
+$_SESSION['pending_code'] = $code;
+$_SESSION['pending_time'] = time(); 
 
-   
-    $Sql ="INSERT INTO `session`(`IdUser`, `Ip`, `DateStart`, `DateNow`) 
-           VALUES (?, ?, ?, ?)";
-    $stmtSes = $mysqli->prepare($Sql);
-    $stmtSes->bind_param("isss", $id, $Ip, $DateStart, $DateStart);
-    $stmtSes->execute();
-    $_SESSION["IdSession"] = $stmtSes->insert_id;
-    $stmtSes->close();
 
-    $SqlLog = "INSERT INTO `logs`(`Ip`, `IdUser`, `Date`, `TimeOnline`, `Event`)
-               VALUES (?, ?, ?, '00:00:00', ?)";
-    $stmtLog = $mysqli->prepare($SqlLog);
-    $event = "Пользователь {$login} авторизовался.";
-    $stmtLog->bind_param("siss", $Ip, $id, $DateStart, $event);
-    $stmtLog->execute();
-    $stmtLog->close();
-}
+$subject = 'Код авторизации';
+$message = "Ваш код авторизации: {$code}";
+$headers = "Content-Type: text/plain; charset=utf-8\r\n";
 
-echo md5(md5($id));
+// раскомментируй в боевой версии
+ mail($login, $subject, $message, $headers);
+
+// для отладки можно временно возвращать код, но для продакшна так не делай
+// echo "NEED_CODE_{$code}";
+echo "NEED_CODE";
 ?>
